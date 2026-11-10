@@ -2,12 +2,15 @@ package com.example.hikvision
 
 import android.net.Uri
 import android.os.Bundle
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -38,13 +41,13 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun HikvisionScreen() {
     var rtspUrl by remember { 
-        mutableStateOf("rtsp://admin:Stockings88!@192.168.1.55:554/Streaming/Channels/101") 
+        mutableStateOf("rtsp://admin:Stockings88@192.168.1.55:554/Streaming/Channels/101") 
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Hikvision Speed Dome (LibVLC)") },
+                title = { Text("Hikvision Viewer (LibVLC)") },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 )
@@ -60,7 +63,8 @@ fun HikvisionScreen() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .background(Color.Black)
+                    .background(Color.Black),
+                contentAlignment = Alignment.Center
             ) {
                 HikvisionVlcPlayer(rtspUrl = rtspUrl)
             }
@@ -100,15 +104,16 @@ fun HikvisionVlcPlayer(
     }
 
     DisposableEffect(rtspUrl) {
-        val media = Media(libVLC, Uri.parse(rtspUrl)).apply {
-            setHWDecoderEnabled(true, true)
-            addOption(":clock-jitter=0")
-            addOption(":clock-synchro=0")
+        if (rtspUrl.isNotBlank()) {
+            val media = Media(libVLC, Uri.parse(rtspUrl)).apply {
+                setHWDecoderEnabled(true, true)
+                addOption(":clock-jitter=0")
+                addOption(":clock-synchro=0")
+            }
+            mediaPlayer.media = media
+            media.release()
+            mediaPlayer.play()
         }
-
-        mediaPlayer.media = media
-        media.release()
-        mediaPlayer.play()
 
         onDispose {
             mediaPlayer.stop()
@@ -121,7 +126,13 @@ fun HikvisionVlcPlayer(
     AndroidView(
         factory = { ctx ->
             VLCVideoLayout(ctx).apply {
-                mediaPlayer.attachViews(this, null, false, false)
+                layoutParams = FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+                // Ustawienie useTextureView = true (czwarty parametr)
+                // Wymusza renderowanie na warstwie Jetpack Compose bez czarnego ekranu
+                mediaPlayer.attachViews(this, null, false, true)
             }
         },
         modifier = modifier
